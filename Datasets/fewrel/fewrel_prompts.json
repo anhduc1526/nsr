@@ -1,0 +1,400 @@
+[{
+    "relation": "place served by transport hub",
+    "positive_template": "[HEAD] ( a transport hub , such as an airport or station ) was / is located in or primarily serves the place [TAIL] ( a city , town , region or area ) .",
+    "negative_template": "[HEAD] ( not a transport hub , such as an airport or station ) neither was / is located in nor primarily serves the place [TAIL] ( not a city , town , region or area ) ."
+},
+{
+    "relation": "contains administrative territorial entity",
+    "positive_template": "[TAIL] ( an administrative territorial entity such as a province , state , district , municipality , county , or island ) was / is contained within or part of [HEAD] ( a larger administrative region such as a country , province , state , or territory ) .",
+    "negative_template": "[TAIL] ( not an administrative territorial entity such as a province , state , district , municipality , county , or island ) neither was / is contained within nor is part of [HEAD] ( not a larger administrative region such as a country , province , state , or territory ) ."
+},
+{
+    "relation": "country",
+    "positive_template": "[TAIL] ( a country ) was / is the country associated with [HEAD] ( a person , organization , place , or structure ) .",
+    "negative_template": "[TAIL] ( not a country ) was not / is not the country associated with [HEAD] ( not a person , organization , place , or structure ) ."
+},
+{
+    "relation": "headquarters location",
+    "positive_template": "[TAIL] ( a city or region ) was / is the headquarters location of [HEAD] ( an organization , company , or institution ) .",
+    "negative_template": "[TAIL] ( not a city or region ) was not / is not the headquarters location of [HEAD] ( not an organization , company , or institution ) ."
+},
+{
+    "relation": "located in the administrative territorial entity",
+    "positive_template": "[HEAD] ( a location , landmark , or administrative division ) was / is located in the administrative territorial entity of [TAIL] ( a region , city , province , county , or state ) .",
+    "negative_template": "[HEAD] ( not a location , landmark , or administrative division ) was not / is not located in the administrative territorial entity of [TAIL] ( not a region , city , province , county , or state ) ."
+},
+{
+    "relation": "occupant",
+    "positive_template": "[HEAD] ( a venue or location ) was / is the home or location used by or associated with [TAIL] ( an organization or team ) .",
+    "negative_template": "[HEAD] ( not a venue or location ) was not / is not the home or location used by or associated with [TAIL] ( not an organization or team ) ."
+},
+{
+    "relation": "mountain range",
+    "positive_template": "[TAIL] ( a mountain range ) was / is the mountain range that [HEAD] ( a geological feature such as a peak , mountain , ridge , pass , reservoir or escarpment ) was / is part of .",
+    "negative_template": "[TAIL] ( not a mountain range ) was not / is not the mountain range that [HEAD] ( not a geological feature such as a peak , mountain , ridge , pass , reservoir or escarpment ) was / is part of ."
+},
+{
+    "relation": "instance of",
+    "positive_template": "[HEAD] ( an instance ) was / is an instance of [TAIL] ( a category , genre , type , or classification ) .",
+    "negative_template": "[HEAD] ( not an instance ) was not / is not an instance of [TAIL] ( not a category , genre , type , or classification ) ."
+},
+{
+    "relation": "part of",
+    "positive_template": "[HEAD] was / is a part of [TAIL] .",
+    "negative_template": "[HEAD] was not / is not a part of [TAIL] ."
+},
+{
+    "relation": "crosses",
+    "positive_template": "[HEAD] ( a bridge , aqueduct , or similar structure ) crosses [TAIL] ( a river or body of water ) .",
+    "negative_template": "[HEAD] ( not a bridge , aqueduct , or similar structure ) does not cross [TAIL] ( not a river or body of water ) ."
+},
+{
+    "relation": "located on terrain feature",
+    "positive_template": "[HEAD] ( a place , structure , or geographic feature ) was / is located on or along [TAIL] ( a terrain feature or geographic area ) .",
+    "negative_template": "[HEAD] ( not a place , structure , or geographic feature ) was not / is not located on or along [TAIL] ( not a terrain feature or geographic area ) ."
+},
+{
+    "relation": "head of government",
+    "positive_template": "[TAIL] ( a person ) was / is the head of government of [HEAD] ( a country , region , city , or government ) .",
+    "negative_template": "[TAIL] ( not a person ) was not / is not the head of government of [HEAD] ( not a country , region , city , or government ) ."
+},
+{
+    "relation": "applies to jurisdiction",
+    "positive_template": "[HEAD] ( a legal document , position , organization , legislative body or governance role ) applies to the jurisdiction of [TAIL] ( a government body , political division , city , or territory ) .",
+    "negative_template": "[HEAD] ( not a legal document , position , organization , legislative body or governance role ) does not apply to the jurisdiction of [TAIL] ( not a government body , political division , city , or territory ) ."
+},
+{
+    "relation": "said to be the same as",
+    "positive_template": "[HEAD] ( a name , term or concept ) is said to be the same as [TAIL] ( a name , term or concept with a similar meaning or equivalent ) .",
+    "negative_template": "[HEAD] ( not a name , term or concept ) is not said to be the same as [TAIL] ( not a name , term or concept with a similar meaning or equivalent ) ."
+},
+{
+    "relation": "architect",
+    "positive_template": "[TAIL] was / is the architect who designed [HEAD] ( a building or structure ) .",
+    "negative_template": "[TAIL] was not / is not the architect who designed [HEAD] ( not a building or structure ) ."
+},
+{
+    "relation": "country of origin",
+    "positive_template": "[HEAD] ( a cultural work , entity , or person ) originated from or is associated with [TAIL] ( a country or region ) .",
+    "negative_template": "[HEAD] ( not a cultural work , entity , or person ) did not originate from and is not associated with [TAIL] ( not a country or region ) ."
+},
+{
+    "relation": "position played on team / speciality",
+    "positive_template": "[HEAD] ( a person or athlete ) played / plays as a [TAIL] ( a position or speciality ) on a team .",
+    "negative_template": "[HEAD] ( not a person or athlete ) did not play / does not play as a [TAIL] ( not a position or speciality ) on a team ."
+},
+{
+    "relation": "country of citizenship",
+    "positive_template": "[TAIL] was / is the country of citizenship for [HEAD] ( a person ) .",
+    "negative_template": "[TAIL] was not / is not the country of citizenship for [HEAD] ( not a person ) ."
+},
+{
+    "relation": "work location",
+    "positive_template": "[HEAD] ( a person ) worked or was located in [TAIL] ( a place ) .",
+    "negative_template": "[HEAD] ( not a person ) neither worked nor was located in [TAIL] ( not a place ) ."
+},
+{
+    "relation": "position held",
+    "positive_template": "[HEAD] held / holds the position of [TAIL] ( a title of responsibility or authority ) .",
+    "negative_template": "[HEAD] did not hold / does not hold the position of [TAIL] ( not a title of responsibility or authority ) ."
+},
+{
+    "relation": "member of political party",
+    "positive_template": "[HEAD] ( a person , typically a politician or political figure ) was / is a member of the political party [TAIL] .",
+    "negative_template": "[HEAD] ( not a person , typically a politician or political figure ) was not / is not a member of the political party [TAIL] ."
+},
+{
+    "relation": "residence",
+    "positive_template": "[TAIL] was / is the place of residence for [HEAD] ( a person or entity ) .",
+    "negative_template": "[TAIL] was not / is not the place of residence for [HEAD] ( not a person or entity ) ."
+},
+{
+    "relation": "instrument",
+    "positive_template": "[HEAD] ( a musician , composer , or performer ) plays or is associated with the instrument [TAIL] .",
+    "negative_template": "[HEAD] ( not a musician , composer , or performer ) neither plays nor is associated with the instrument [TAIL] ."
+},
+{
+    "relation": "after a work by",
+    "positive_template": "[HEAD] ( a work , such as a film , novel , book , play , or story ) was / is created after or based on a work by [TAIL] ( a person , usually an author or creator ) .",
+    "negative_template": "[HEAD] ( not a work , such as a film , novel , book , play , or story ) was not / is not created after or based on a work by [TAIL] ( not a person , usually an author or creator ) ."
+},
+{
+    "relation": "movement",
+    "positive_template": "[TAIL] ( a movement or style in art , architecture , music , literature , or a cultural period ) was / is associated with or part of the work or influence of [HEAD] ( a person , group , or place ) .",
+    "negative_template": "[TAIL] ( not a movement or style in art , architecture , music , literature , or a cultural period ) was not / is not associated with or part of the work or influence of [HEAD] ( not a person , group , or place ) ."
+},
+{
+    "relation": "participant of",
+    "positive_template": "[HEAD] ( a person , athlete or competitor ) was / is a participant in [TAIL] ( a competition , event , tournament or championship ) .",
+    "negative_template": "[HEAD] ( not a person , athlete or competitor ) was not / is not a participant in [TAIL] ( not a competition , event , tournament or championship ) ."
+},
+{
+    "relation": "sibling",
+    "positive_template": "[TAIL] ( a person ) was / is the sibling , which includes brothers and sisters , of [HEAD] ( a person ) .",
+    "negative_template": "[TAIL] ( not a person ) was not / is not the sibling , which includes brothers and sisters , of [HEAD] ( not a person ) ."
+},
+{
+    "relation": "occupation",
+    "positive_template": "[HEAD] ( a person ) was / is a [TAIL] ( a profession or role ) .",
+    "negative_template": "[HEAD] ( not a person ) was not / is not a [TAIL] ( not a profession or role ) ."
+},
+{
+    "relation": "participant",
+    "positive_template": "[TAIL] ( a person , group , organization , entity , or country ) was / were participant ( s ) in [HEAD] ( an event , battle , competition , rivalry , or conflict ) .",
+    "negative_template": "[TAIL] ( not a person , group , organization , entity , or country ) was not / were not participant ( s ) in [HEAD] ( not an event , battle , competition , rivalry , or conflict ) ."
+},
+{
+    "relation": "performer",
+    "positive_template": "[TAIL] ( a music artist or group ) was / is the performer of the song or musical work [HEAD] .",
+    "negative_template": "[TAIL] ( not a music artist or group ) was not / is not the performer of the song or musical work [HEAD] ."
+},
+{
+    "relation": "league",
+    "positive_template": "[HEAD] ( a sports team ) was / is a member of or competes in [TAIL] ( a sports league or division ) .",
+    "negative_template": "[HEAD] ( not a sports team ) neither was / is a member of nor competes in [TAIL] ( not a sports league or division ) ."
+},
+{
+    "relation": "member of",
+    "positive_template": "[HEAD] ( a person , entity , or region ) was / is a member of [TAIL] ( an organization , group , or community ) .",
+    "negative_template": "[HEAD] ( not a person , entity , or region ) was not / is not a member of [TAIL] ( not an organization , group , or community ) ."
+},
+{
+    "relation": "father",
+    "positive_template": "[TAIL] ( a person ) was / is the father of [HEAD] ( a person ) .",
+    "negative_template": "[TAIL] ( not a person ) was not / is not the father of [HEAD] ( not a person ) ."
+},
+{
+    "relation": "genre",
+    "positive_template": "[HEAD] ( a person , band , album , film , or television series ) was / is associated with or characterized by the genre [TAIL] .",
+    "negative_template": "[HEAD] ( not a person , band , album , film , or television series ) was not / is not associated with or characterized by the genre [TAIL] ."
+},
+{
+    "relation": "voice type",
+    "positive_template": "[HEAD] ( a person ) has / had a voice type categorized as [TAIL] ( a type of voice such as soprano , mezzo - soprano , tenor or baritone ) .",
+    "negative_template": "[HEAD] ( not a person ) does not have / did not have a voice type categorized as [TAIL] ( not a type of voice such as soprano , mezzo - soprano , tenor or baritone ) ."
+},
+{
+    "relation": "field of work",
+    "positive_template": "[TAIL] ( a field of study , discipline , or profession ) was / is the field of work or expertise of [HEAD] ( a person or organization ) .",
+    "negative_template": "[TAIL] ( not a field of study , discipline , or profession ) was not / is not the field of work or expertise of [HEAD] ( not a person or organization ) ."
+},
+{
+    "relation": "location of formation",
+    "positive_template": "[HEAD] ( a band , organization , company or group of people ) was / is formed or founded in [TAIL] ( a city , town or geographical location ) .",
+    "negative_template": "[HEAD] ( not a band , organization , company or group of people ) was not / is not formed or founded in [TAIL] ( not a city , town or geographical location ) ."
+},
+{
+    "relation": "original broadcaster",
+    "positive_template": "[TAIL] ( a television channel or network ) was / is the original broadcaster of [HEAD] ( a television show , series , or event ) .",
+    "negative_template": "[TAIL] ( not a television channel or network ) was not / is not the original broadcaster of [HEAD] ( not a television show , series , or event ) ."
+},
+{
+    "relation": "characters",
+    "positive_template": "[TAIL] ( a character ) was / is a character from or associated with [HEAD] ( a book , film , play , television series , game , or other narrative ) .",
+    "negative_template": "[TAIL] ( not a character ) was not / is not a character from or associated with [HEAD] ( not a book , film , play , television series , game , or other narrative ) ."
+},
+{
+    "relation": "heritage designation",
+    "positive_template": "[HEAD] ( a site , structure , or location ) was / is designated as a [TAIL] ( a heritage designation or register of historic places ) .",
+    "negative_template": "[HEAD] ( not a site , structure , or location ) was not / is not designated as a [TAIL] ( not a heritage designation or register of historic places ) ."
+},
+{
+    "relation": "followed by",
+    "positive_template": "[TAIL] was / is followed by [HEAD] ( an event , entity , or unit in a sequence or chronological order ) .",
+    "negative_template": "[TAIL] was not / is not followed by [HEAD] ( not an event , entity , or unit in a sequence or chronological order ) ."
+},
+{
+    "relation": "notable work",
+    "positive_template": "[TAIL] ( a work or creation such as a book , painting , machine , film , etc . ) was / is a notable work created by [HEAD] ( a person or organization ) .",
+    "negative_template": "[TAIL] ( not a work or creation such as a book , painting , machine , film , etc . ) was not / is not a notable work created by [HEAD] ( not a person or organization ) ."
+},
+{
+    "relation": "record label",
+    "positive_template": "[TAIL] ( a record label ) was / is the record label associated with [HEAD] ( an artist , band , or musical work ) .",
+    "negative_template": "[TAIL] ( not a record label ) was not / is not the record label associated with [HEAD] ( not an artist , band , or musical work ) ."
+},
+{
+    "relation": "language of work or name",
+    "positive_template": "[TAIL] ( a language ) was / is used in or associated with [HEAD] ( a work , name , text , manuscript , publication , or linguistic piece ) .",
+    "negative_template": "[TAIL] ( not a language ) was not / is not used in or associated with [HEAD] ( not a work , name , text , manuscript , publication , or linguistic piece ) ."
+},
+{
+    "relation": "winner",
+    "positive_template": "[TAIL] ( an individual , team , organization , or entity ) was / is the winner of [HEAD] ( a contest , championship , award , or title ) .",
+    "negative_template": "[TAIL] ( not an individual , team , organization , or entity ) was not / is not the winner of [HEAD] ( not a contest , championship , award , or title ) ."
+},
+{
+    "relation": "follows",
+    "positive_template": "[HEAD] ( an event , sequence , entity , or instance ) follows [TAIL] ( an earlier event , sequence , entity , or instance ) .",
+    "negative_template": "[HEAD] ( not an event , sequence , entity , or instance ) does not follow [TAIL] ( not an earlier event , sequence , entity , or instance ) ."
+},
+{
+    "relation": "sports season of league or competition",
+    "positive_template": "[HEAD] ( a season , year , edition or instance ) was / is a sports season of the league or competition [TAIL] ( a sports league , competition or tournament ) .",
+    "negative_template": "[HEAD] ( not a season , year , edition or instance ) was not / is not a sports season of the league or competition [TAIL] ( not a sports league , competition or tournament ) ."
+},
+{
+    "relation": "spouse",
+    "positive_template": "[TAIL] was / is the spouse of [HEAD] ( a person ) .",
+    "negative_template": "[TAIL] was not / is not the spouse of [HEAD] ( not a person ) ."
+},
+{
+    "relation": "successful candidate",
+    "positive_template": "[TAIL] ( a person or political entity ) was / is the successful candidate of [HEAD] ( an election , by-election , general election or campaign ) .",
+    "negative_template": "[TAIL] ( not a person or political entity ) was not / is not the successful candidate of [HEAD] ( not an election , by-election , general election or campaign ) ."
+},
+{
+    "relation": "military rank",
+    "positive_template": "[TAIL] ( a military rank ) was / is the rank held by [HEAD] ( a person ) in a military force .",
+    "negative_template": "[TAIL] ( not a military rank ) was not / is not the rank held by [HEAD] ( not a person ) in a military force ."
+},
+{
+    "relation": "has part",
+    "positive_template": "[TAIL] ( a sub-unit , component , section , or member ) was / is part of or associated with [HEAD] ( an entity , group , event , season , series , or whole ) .",
+    "negative_template": "[TAIL] ( not a sub-unit , component , section , or member ) was not / is not part of or associated with [HEAD] ( not an entity , group , event , season , series , or whole ) ."
+},
+{
+    "relation": "military branch",
+    "positive_template": "[TAIL] ( a branch of the military ) was / is the military branch that [HEAD] ( a person or unit ) was / is affiliated with .",
+    "negative_template": "[TAIL] ( not a branch of the military ) was not / is not the military branch that [HEAD] ( not a person or unit ) was / is affiliated with ."
+},
+{
+    "relation": "nominated for",
+    "positive_template": "[HEAD] ( a person , film , production or creative work ) was / is nominated for [TAIL] ( an award , category or recognition ) .",
+    "negative_template": "[HEAD] ( not a person , film , production or creative work ) was not / is not nominated for [TAIL] ( not an award , category or recognition ) ."
+},
+{
+    "relation": "constellation",
+    "positive_template": "[HEAD] ( a celestial object such as a star , galaxy , or star system ) was / is located in the constellation [TAIL] ( a defined area of the celestial sphere ) .",
+    "negative_template": "[HEAD] ( not a celestial object such as a star , galaxy , or star system ) was not / is not located in the constellation [TAIL] ( not a defined area of the celestial sphere ) ."
+},
+{
+    "relation": "located in or next to body of water",
+    "positive_template": "[HEAD] ( a place ) was / is located in or next to [TAIL] ( a body of water such as a river , sea , ocean , channel or lake ) .",
+    "negative_template": "[HEAD] ( not a place ) was not / is not located in or next to [TAIL] ( not a body of water such as a river , sea , ocean , channel or lake ) ."
+},
+{
+    "relation": "publisher",
+    "positive_template": "[TAIL] ( a publisher or game developer ) was / is the publisher of [HEAD] ( a book , video game or work ) .",
+    "negative_template": "[TAIL] ( not a publisher or game developer ) was not / is not the publisher of [HEAD] ( not a book , video game or work ) ."
+},
+{
+    "relation": "platform",
+    "positive_template": "[HEAD] ( a video game , software application , or media content ) was / is available or released on the [TAIL] ( a gaming console , operating system , or digital platform ) platform .",
+    "negative_template": "[HEAD] ( not a video game , software application , or media content ) was not / is not available or released on the [TAIL] ( not a gaming console , operating system , or digital platform ) platform ."
+},
+{
+    "relation": "developer",
+    "positive_template": "[TAIL] ( a company or organization ) was / is the developer of [HEAD] ( a video game , software , or digital product ) .",
+    "negative_template": "[TAIL] ( not a company or organization ) was not / is not the developer of [HEAD] ( not a video game , software , or digital product ) ."
+},
+{
+    "relation": "director",
+    "positive_template": "[TAIL] was / is the director of [HEAD] ( a film , movie or television ) .",
+    "negative_template": "[TAIL] was not / is not the director of [HEAD] ( not a film , movie or television ) ."
+},
+{
+    "relation": "distributor",
+    "positive_template": "[TAIL] ( a film distributor or production company ) distributed [HEAD] ( a film or motion picture ) .",
+    "negative_template": "[TAIL] ( not a film distributor or production company ) did not distribute [HEAD] ( not a film or motion picture ) ."
+},
+{
+    "relation": "screenwriter",
+    "positive_template": "[TAIL] was / is the screenwriter of [HEAD] ( a film , episode , or screenplay ) .",
+    "negative_template": "[TAIL] was not / is not the screenwriter of [HEAD] ( not a film , episode , or screenplay ) ."
+},
+{
+    "relation": "mother",
+    "positive_template": "[TAIL] ( a female person ) was / is the mother of [HEAD] ( her child , a person ) .",
+    "negative_template": "[TAIL] ( not a female person ) was not / is not the mother of [HEAD] ( not her child , a person ) ."
+},
+{
+    "relation": "child",
+    "positive_template": "[TAIL] ( a person ) was / is a child of [HEAD] ( a person ) .",
+    "negative_template": "[TAIL] ( not a person ) was not / is not a child of [HEAD] ( not a person ) ."
+},
+{
+    "relation": "mouth of the watercourse",
+    "positive_template": "[HEAD] ( a river or watercourse ) was / is the tributary or joins at the mouth of the watercourse to [TAIL] ( a larger river or body of water ) .",
+    "negative_template": "[HEAD] ( not a river or watercourse ) neither was / is the tributary nor joins at the mouth of the watercourse to [TAIL] ( not a larger river or body of water ) ."
+},
+{
+    "relation": "tributary",
+    "positive_template": "[TAIL] ( a river or stream ) is / was a tributary of [HEAD] ( a larger river or main water flow ) .",
+    "negative_template": "[TAIL] ( not a river or stream ) is not / was not a tributary of [HEAD] ( not a larger river or main water flow ) ."
+},
+{
+    "relation": "taxon rank",
+    "positive_template": "[HEAD] ( a taxon entity such as a group , clade , or classification ) has the taxon rank of [TAIL] ( such as a family , subfamily , order , or other taxonomic rank ) .",
+    "negative_template": "[HEAD] ( not a taxon entity such as a group , clade , or classification ) does not have the taxon rank of [TAIL] ( not such as a family , subfamily , order , or other taxonomic rank ) ."
+},
+{
+    "relation": "manufacturer",
+    "positive_template": "[TAIL] ( a company or manufacturer ) was / is the manufacturer of [HEAD] ( a product , vehicle , device or machinery ) .",
+    "negative_template": "[TAIL] ( not a company or manufacturer ) was not / is not the manufacturer of [HEAD] ( not a product , vehicle , device or machinery ) ."
+},
+{
+    "relation": "licensed to broadcast to",
+    "positive_template": "[HEAD] ( a radio or television station ) was / is licensed to broadcast to [TAIL] ( a city , municipality or area ) .",
+    "negative_template": "[HEAD] ( not a radio or television station ) was not / is not licensed to broadcast to [TAIL] ( not a city , municipality or area ) ."
+},
+{
+    "relation": "subsidiary",
+    "positive_template": "[TAIL] ( a company , division , organization , or entity ) was / is a subsidiary of [HEAD] ( a parent company , institution , or organization ) .",
+    "negative_template": "[TAIL] ( not a company , division , organization , or entity ) was not / is not a subsidiary of [HEAD] ( not a parent company , institution , or organization ) ."
+},
+{
+    "relation": "operator",
+    "positive_template": "[HEAD] ( a location , equipment , or transportation unit ) was / is operated by [TAIL] ( an organization , such as a transportation service , military entity , or government agency ) .",
+    "negative_template": "[HEAD] ( not a location , equipment , or transportation unit ) was not / is not operated by [TAIL] ( not an organization , such as a transportation service , military entity , or government agency ) ."
+},
+{
+    "relation": "religion",
+    "positive_template": "[TAIL] was / is the religion or worldview of or associated with [HEAD] ( a person , organization , building , event or text ) .",
+    "negative_template": "[TAIL] was not / is not the religion or worldview of or associated with [HEAD] ( not a person , organization , building , event or text ) ."
+},
+{
+    "relation": "location",
+    "positive_template": "[HEAD] ( an event , performance , structure , or object ) was / is located in [TAIL] ( a city , theatre , arena , district , or region ) .",
+    "negative_template": "[HEAD] ( not an event , performance , structure , or object ) was not / is not located in [TAIL] ( not a city , theatre , arena , district , or region ) ."
+},
+{
+    "relation": "competition class",
+    "positive_template": "[HEAD] ( a competitor or athlete ) was / is classified in the [TAIL] ( weight or competition class ) category .",
+    "negative_template": "[HEAD] ( not a competitor or athlete ) was not / is not classified in the [TAIL] ( not a weight or competition class ) category ."
+},
+{
+    "relation": "operating system",
+    "positive_template": "[TAIL] ( an operating system ) was / is the operating system on which [HEAD] ( a software application , device or computer system ) was / is available , runs or operates .",
+    "negative_template": "[TAIL] ( not an operating system ) was not / is not the operating system on which [HEAD] ( not a software application , device or computer system ) neither was / is available , nor runs or operates ."
+},
+{
+    "relation": "owned by",
+    "positive_template": "[HEAD] ( an entity such as a place , product , company , or organization ) was / is owned by [TAIL] ( a larger organization , company , governmental body , or creator ) .",
+    "negative_template": "[HEAD] ( not an entity such as a place , product , company , or organization ) was not / is not owned by [TAIL] ( not a larger organization , company , governmental body , or creator ) ."
+},
+{
+    "relation": "participating team",
+    "positive_template": "[TAIL] ( a team or national team ) was / is a participating team in [HEAD] ( a league , tournament , competition or event ) .",
+    "negative_template": "[TAIL] ( not a team or national team ) was not / is not a participating team in [HEAD] ( not a league , tournament , competition or event ) ."
+},
+{
+    "relation": "sport",
+    "positive_template": "[HEAD] ( a person , organization , event , or venue ) was / is associated with or participates in the sport of [TAIL] ( a type of sport or athletic activity ) .",
+    "negative_template": "[HEAD] ( not a person , organization , event , or venue ) neither was / is associated with nor participates in the sport of [TAIL] ( not a type of sport or athletic activity ) ."
+},
+{
+    "relation": "main subject",
+    "positive_template": "[HEAD] ( a piece of work , publication , or performance ) had / has [TAIL] ( a primary topic , event , or subject matter ) as its main subject .",
+    "negative_template": "[HEAD] ( not a piece of work , publication , or performance ) did not have / does not have [TAIL] ( not a primary topic , event , or subject matter ) as its main subject ."
+},
+{
+    "relation": "original language of film or TV show",
+    "positive_template": "[TAIL] was / is the original language of the film or TV show [HEAD] .",
+    "negative_template": "[TAIL] was not / is not the original language of the film or TV show [HEAD] ."
+},
+{
+    "relation": "composer",
+    "positive_template": "[HEAD] ( a musical work , composition , opera , song or film score ) was / is composed by [TAIL] ( a composer , lyricist or musician ) .",
+    "negative_template": "[HEAD] ( not a musical work , composition , opera , song or film score ) was not / is not composed by [TAIL] ( not a composer , lyricist or musician ) ."
+}]

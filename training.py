@@ -6,13 +6,18 @@ import torch.nn.functional as F
 from transformers import AutoTokenizer, get_cosine_schedule_with_warmup
 from modeling import RelationClassifier
 from utils import load_dataset, compute_macro_PRF
-from transformers.trainer import get_parameter_names, ALL_LAYERNORM_LAYERS
+from transformers.pytorch_utils import ALL_LAYERNORM_LAYERS
+from transformers.trainer_pt_utils import get_parameter_names
 
 class Trainer:
     def __init__(self, args):
         self.args = args
+        if 'cuda' in str(self.args.device) and not torch.cuda.is_available():
+            print("Warning: CUDA is not available. Falling back to 'cpu'.")
+            self.args.device = 'cpu'
+        self.use_cuda = torch.cuda.is_available() and 'cuda' in str(self.args.device)
         self.tokenizer = AutoTokenizer.from_pretrained(args.encoder_name)
-        self.model = RelationClassifier(args).to(args.device)
+        self.model = RelationClassifier(args).to(self.args.device)
 
         self.tokenizer.add_special_tokens({'additional_special_tokens': ['[H]', '[T]', '[HEAD]', '[/HEAD]', '[TAIL]', '[/TAIL]']})
         self.model.encoder.resize_token_embeddings(len(self.tokenizer))
@@ -21,7 +26,7 @@ class Trainer:
         num_steps = num_epochs * len(data_loader)
         num_warmup_steps = int(num_steps * self.args.warmup_ratio)
         scheduler = get_cosine_schedule_with_warmup(optimizer, num_warmup_steps, num_steps)
-        scaler = torch.cuda.amp.GradScaler()
+        scaler = torch.amp.GradScaler('cuda', enabled=self.use_cuda)
 
         for epoch in range(num_epochs):
             self.model.train()
@@ -34,7 +39,7 @@ class Trainer:
                     if isinstance(v, torch.Tensor):
                         x[k] = v.to(self.args.device)
 
-                with torch.cuda.amp.autocast(dtype=torch.float16):
+                with torch.amp.autocast(device_type='cuda' if self.use_cuda else 'cpu', dtype=torch.float16, enabled=self.use_cuda):
                     loss = self.model(**x).loss
 
                 if torch.isnan(loss).any():
@@ -50,7 +55,8 @@ class Trainer:
                 if new_scaler >= old_scaler:
                     scheduler.step()
                 del x
-                torch.cuda.empty_cache()
+                if self.use_cuda:
+                    torch.cuda.empty_cache()
                 description = f"epoch: {epoch} | step: {i} | loss: {loss.item():.4f}"
                 pbar.set_description(description)
 

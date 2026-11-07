@@ -16,7 +16,7 @@ def parsers():
     parser.add_argument('--others_lr', type=float, default=1e-4)
     parser.add_argument('--weight_decay', type=float, default=0.01)
     parser.add_argument('--max_grad_norm', type=float, default=1.0)
-    parser.add_argument('--num_workers', type=int, default=8 if torch.cuda.is_available() else 0)
+    parser.add_argument('--num_workers', type=int, default=4 if torch.cuda.is_available() else 0)
     parser.add_argument('--device', type=str, default='cuda:0' if torch.cuda.is_available() else 'cpu')
     parser.add_argument('--hidden_size', type=int, default=768)
     parser.add_argument('--max_length', type=int, default=512)

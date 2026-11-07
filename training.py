@@ -21,6 +21,7 @@ class Trainer:
 
         self.tokenizer.add_special_tokens({'additional_special_tokens': ['[H]', '[T]', '[HEAD]', '[/HEAD]', '[TAIL]', '[/TAIL]']})
         self.model.encoder.resize_token_embeddings(len(self.tokenizer))
+        self.model.encoder.gradient_checkpointing_enable()
 
     def training(self, data_loader, optimizer, num_epochs):
         num_steps = num_epochs * len(data_loader)
@@ -33,7 +34,7 @@ class Trainer:
 
             pbar = tqdm(range(len(data_loader)))
             for i, x in zip(pbar, data_loader):
-                optimizer.zero_grad()
+                optimizer.zero_grad(set_to_none=True)
 
                 for k, v in x.items():
                     if isinstance(v, torch.Tensor):
@@ -44,9 +45,12 @@ class Trainer:
 
                 if torch.isnan(loss).any():
                     print('Warning: NaN loss detected!')
+                    del x, loss
                     continue
 
+                loss_val = loss.item()
                 scaler.scale(loss).backward()
+                del x, loss
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.args.max_grad_norm)
                 scaler.step(optimizer)
                 old_scaler = scaler.get_scale()
@@ -54,10 +58,9 @@ class Trainer:
                 new_scaler = scaler.get_scale()
                 if new_scaler >= old_scaler:
                     scheduler.step()
-                del x
                 if self.use_cuda:
                     torch.cuda.empty_cache()
-                description = f"epoch: {epoch} | step: {i} | loss: {loss.item():.4f}"
+                description = f"epoch: {epoch} | step: {i} | loss: {loss_val:.4f}"
                 pbar.set_description(description)
 
             self.evaluate(epoch, 'test')
@@ -115,6 +118,9 @@ class Trainer:
 
             all_preds.extend(preds)
             all_golds.extend(x['golden_labels'])
+            del x, logits
+            if self.use_cuda:
+                torch.cuda.empty_cache()
 
         all_preds = np.array(all_preds)
         all_golds = np.array(all_golds)

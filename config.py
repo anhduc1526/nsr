@@ -1,5 +1,4 @@
 import argparse
-import torch
 
 def parsers():
     parser = argparse.ArgumentParser(description='G-NSR model of argparse')
@@ -16,13 +15,29 @@ def parsers():
     parser.add_argument('--others_lr', type=float, default=1e-4)
     parser.add_argument('--weight_decay', type=float, default=0.01)
     parser.add_argument('--max_grad_norm', type=float, default=1.0)
-    parser.add_argument('--num_workers', type=int, default=4 if torch.cuda.is_available() else 0)
-    parser.add_argument('--device', type=str, default='cuda:0' if torch.cuda.is_available() else 'cpu')
+    parser.add_argument('--num_workers', type=int, default=0)
+    parser.add_argument('--device', type=str, default='cuda:0')
     parser.add_argument('--hidden_size', type=int, default=768)
     parser.add_argument('--max_length', type=int, default=512)
     parser.add_argument('--dropout', type=float, default=0.1)
     parser.add_argument('--max_relations', type=int, default=4)
     parser.add_argument('--zeta_1', type=float, default=0.5)
     parser.add_argument('--zeta_2', type=float, default=1.0)
+    parser.add_argument('--error_output', type=str, default=None)
+    parser.add_argument(
+        '--ablation',
+        type=str,
+        default='none',
+        choices=[
+            'none',
+            'wo_duality',
+            'wo_type_constraints',
+            'wo_both',
+            'wo_implication_loss',
+            'wo_reasoner',
+            'wo_local',
+        ],
+    )
+    parser.add_argument('--resume', action='store_true')
 
     return parser.parse_args()

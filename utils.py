@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import copy
 import random
@@ -100,6 +101,7 @@ class BaseDataset(Dataset):
         return {
             'sentence': add_entity_markers(data_i['sentence'], data_i['head'], data_i['tail']),
             'relation': data_i['relation'],
+            'sample_idx': index,
         }
 
 class WikiZSLDataset(BaseDataset):
@@ -110,16 +112,29 @@ class FewRelDataset(BaseDataset):
     def __init__(self, args, data):
         super().__init__(args, data)
 
+def strip_type_constraints(template):
+    """Remove parenthesized entity type constraints from a relation schema template."""
+    cleaned = re.sub(r'\s*\([^)]*\)', '', template)
+    return re.sub(r'\s+', ' ', cleaned).strip()
+
 class BaseCollator(ABC):
     def __init__(self, args, tokenizer, descriptions):
         super().__init__()
         self.args = args
         self.tokenizer = tokenizer
+        ablation = getattr(args, 'ablation', 'none')
+        self.use_duality = ablation not in ('wo_duality', 'wo_both')
+        remove_types = ablation in ('wo_type_constraints', 'wo_both')
         self.descriptions = {}
         for r in descriptions:
+            pos_tpl = r['positive_template']
+            neg_tpl = r['negative_template']
+            if remove_types:
+                pos_tpl = strip_type_constraints(pos_tpl)
+                neg_tpl = strip_type_constraints(neg_tpl)
             self.descriptions[r['relation']] = (
-                r['positive_template'].replace('[HEAD]', '[H]').replace('[TAIL]', '[T]'),
-                r['negative_template'].replace('[HEAD]', '[H]').replace('[TAIL]', '[T]'),
+                pos_tpl.replace('[HEAD]', '[H]').replace('[TAIL]', '[T]'),
+                neg_tpl.replace('[HEAD]', '[H]').replace('[TAIL]', '[T]'),
             )
 
     @abstractmethod
@@ -148,12 +163,14 @@ class TrainCollator(BaseCollator):
             for r in all_relations:
                 s = self.descriptions[r][0] + ' ' + self.tokenizer.sep_token + ' ' + ' '.join(b['sentence'])
                 pos_input_texts.append(s)
-                s = self.descriptions[r][1] + ' ' + self.tokenizer.sep_token + ' ' + ' '.join(b['sentence'])
-                neg_input_texts.append(s)
+                if self.use_duality:
+                    s = self.descriptions[r][1] + ' ' + self.tokenizer.sep_token + ' ' + ' '.join(b['sentence'])
+                    neg_input_texts.append(s)
                 labels.append(1 if b['relation'] == r else 0)
 
+        input_texts = pos_input_texts + neg_input_texts if self.use_duality else pos_input_texts
         tokenized_inputs = self.tokenizer(
-            pos_input_texts + neg_input_texts,
+            input_texts,
             padding='longest',
             truncation=True,
             max_length=self.args.max_length,
@@ -193,11 +210,13 @@ class EvalCollator(BaseCollator):
             for r in self.relations:
                 s = self.descriptions[r][0] + ' ' + self.tokenizer.sep_token + ' ' + ' '.join(b['sentence'])
                 pos_input_texts.append(s)
-                s = self.descriptions[r][1] + ' ' + self.tokenizer.sep_token + ' ' + ' '.join(b['sentence'])
-                neg_input_texts.append(s)
+                if self.use_duality:
+                    s = self.descriptions[r][1] + ' ' + self.tokenizer.sep_token + ' ' + ' '.join(b['sentence'])
+                    neg_input_texts.append(s)
 
+        input_texts = pos_input_texts + neg_input_texts if self.use_duality else pos_input_texts
         tokenized_inputs = self.tokenizer(
-            pos_input_texts + neg_input_texts,
+            input_texts,
             padding='longest',
             truncation=True,
             max_length=self.args.max_length,
@@ -218,4 +237,5 @@ class EvalCollator(BaseCollator):
             'attention_mask': tokenized_inputs['attention_mask'],
             'boundaries': boundaries,
             'golden_labels': golden_labels,
+            'sample_indices': [b['sample_idx'] for b in batch],
         }

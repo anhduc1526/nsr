@@ -6,51 +6,43 @@ import torch.nn.functional as F
 from transformers import AutoTokenizer, get_cosine_schedule_with_warmup
 from modeling import RelationClassifier
 from utils import load_dataset, compute_macro_PRF
-from transformers.pytorch_utils import ALL_LAYERNORM_LAYERS
-from transformers.trainer_pt_utils import get_parameter_names
+from transformers.trainer import get_parameter_names, ALL_LAYERNORM_LAYERS
 
 class Trainer:
     def __init__(self, args):
         self.args = args
-        if 'cuda' in str(self.args.device) and not torch.cuda.is_available():
-            print("Warning: CUDA is not available. Falling back to 'cpu'.")
-            self.args.device = 'cpu'
-        self.use_cuda = torch.cuda.is_available() and 'cuda' in str(self.args.device)
         self.tokenizer = AutoTokenizer.from_pretrained(args.encoder_name)
-        self.model = RelationClassifier(args).to(self.args.device)
+        self.model = RelationClassifier(args).to(args.device)
 
         self.tokenizer.add_special_tokens({'additional_special_tokens': ['[H]', '[T]', '[HEAD]', '[/HEAD]', '[TAIL]', '[/TAIL]']})
         self.model.encoder.resize_token_embeddings(len(self.tokenizer))
-        self.model.encoder.gradient_checkpointing_enable()
 
     def training(self, data_loader, optimizer, num_epochs):
         num_steps = num_epochs * len(data_loader)
         num_warmup_steps = int(num_steps * self.args.warmup_ratio)
         scheduler = get_cosine_schedule_with_warmup(optimizer, num_warmup_steps, num_steps)
-        scaler = torch.amp.GradScaler('cuda', enabled=self.use_cuda)
+        scaler = torch.cuda.amp.GradScaler()
 
+        epoch_results = []
         for epoch in range(num_epochs):
             self.model.train()
 
             pbar = tqdm(range(len(data_loader)))
             for i, x in zip(pbar, data_loader):
-                optimizer.zero_grad(set_to_none=True)
+                optimizer.zero_grad()
 
                 for k, v in x.items():
                     if isinstance(v, torch.Tensor):
                         x[k] = v.to(self.args.device)
 
-                with torch.amp.autocast(device_type='cuda' if self.use_cuda else 'cpu', dtype=torch.float16, enabled=self.use_cuda):
+                with torch.cuda.amp.autocast(dtype=torch.float16):
                     loss = self.model(**x).loss
 
                 if torch.isnan(loss).any():
                     print('Warning: NaN loss detected!')
-                    del x, loss
                     continue
 
-                loss_val = loss.item()
                 scaler.scale(loss).backward()
-                del x, loss
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.args.max_grad_norm)
                 scaler.step(optimizer)
                 old_scaler = scaler.get_scale()
@@ -58,12 +50,18 @@ class Trainer:
                 new_scaler = scaler.get_scale()
                 if new_scaler >= old_scaler:
                     scheduler.step()
-                if self.use_cuda:
-                    torch.cuda.empty_cache()
-                description = f"epoch: {epoch} | step: {i} | loss: {loss_val:.4f}"
+                del x
+                torch.cuda.empty_cache()
+                description = f"epoch: {epoch} | step: {i} | loss: {loss.item():.4f}"
                 pbar.set_description(description)
 
-            self.evaluate(epoch, 'test')
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            epoch_results.append(self.evaluate(epoch, 'test'))
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
+        return epoch_results
 
     def train(self):
         train_loader = load_dataset(self.args, self.tokenizer, load_type='train')
@@ -95,7 +93,7 @@ class Trainer:
         ]
         optimizer = torch.optim.AdamW(optimizer_grouped_parameters)
 
-        self.training(train_loader, optimizer, self.args.num_epochs)
+        return self.training(train_loader, optimizer, self.args.num_epochs)
 
     def evaluate(self, epoch, eval_type):
         eval_loader = load_dataset(self.args, self.tokenizer, load_type=eval_type)
@@ -104,6 +102,7 @@ class Trainer:
 
         all_preds = []
         all_golds = []
+        all_sample_indices = []
 
         pbar = tqdm(range(len(eval_loader)))
         for i, x in zip(pbar, eval_loader):
@@ -118,9 +117,7 @@ class Trainer:
 
             all_preds.extend(preds)
             all_golds.extend(x['golden_labels'])
-            del x, logits
-            if self.use_cuda:
-                torch.cuda.empty_cache()
+            all_sample_indices.extend(x['sample_indices'])
 
         all_preds = np.array(all_preds)
         all_golds = np.array(all_golds)
@@ -132,3 +129,17 @@ class Trainer:
         print('precision: ', precision)
         print('recall: ', recall)
         print('f1: ', f1)
+
+        relations = eval_loader.collate_fn.relations
+        raw_data = eval_loader.dataset.data
+        return {
+            'seed': self.args.seed,
+            'epoch': epoch,
+            'precision': float(precision),
+            'recall': float(recall),
+            'f1': float(f1),
+            'preds_by_idx': {int(idx): relations[int(p)] for idx, p in zip(all_sample_indices, all_preds)},
+            'golds_by_idx': {int(idx): relations[int(g)] for idx, g in zip(all_sample_indices, all_golds)},
+            'relations': list(relations),
+            'raw_data': raw_data,
+        }

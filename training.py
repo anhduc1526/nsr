@@ -6,7 +6,11 @@ import torch.nn.functional as F
 from transformers import AutoTokenizer, get_cosine_schedule_with_warmup
 from modeling import RelationClassifier
 from utils import load_dataset, compute_macro_PRF
-from transformers.trainer import get_parameter_names, ALL_LAYERNORM_LAYERS
+try:
+    from transformers.pytorch_utils import ALL_LAYERNORM_LAYERS
+    from transformers.trainer_pt_utils import get_parameter_names
+except ImportError:
+    from transformers.trainer import get_parameter_names, ALL_LAYERNORM_LAYERS
 
 class Trainer:
     def __init__(self, args):

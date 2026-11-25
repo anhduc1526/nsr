@@ -1,3 +1,8 @@
 __pycache__
 /logs/
 /note/
+.tmp.driveupload/
+.tmp.drivedownload/
+.vscode/
+src/
+idea/

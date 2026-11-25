@@ -18,19 +18,20 @@ def load_dataset(args, tokenizer, load_type):
         descriptions = json.load(f)
 
     if args.dataset == 'wikizsl':
-        dataset = WikiZSLDataset(args, data)
+        dataset = WikiZSLDataset(args, data, tokenizer)
     elif args.dataset == 'fewrel':
-        dataset = FewRelDataset(args, data)
+        dataset = FewRelDataset(args, data, tokenizer)
 
+    pin_memory = torch.cuda.is_available()
     if load_type == 'train':
         train_collator = TrainCollator(args, tokenizer, descriptions)
-        data_loader = DataLoader(dataset, batch_size=args.train_batch_size, shuffle=True, collate_fn=train_collator, num_workers=args.num_workers)
+        data_loader = DataLoader(dataset, batch_size=args.train_batch_size, shuffle=True, collate_fn=train_collator, num_workers=args.num_workers, pin_memory=pin_memory)
     else:
         with open('./Datasets/' + args.dataset + '/' + args.num_unseen_labels + '/seed_' + str(args.seed) + '/' + load_type + '_labels.json', 'r', encoding='utf-8') as f:
             relations = json.load(f)
 
         eval_collator = EvalCollator(args, tokenizer, descriptions, relations)
-        data_loader = DataLoader(dataset, batch_size=args.eval_batch_size, shuffle=True, collate_fn=eval_collator, num_workers=args.num_workers)
+        data_loader = DataLoader(dataset, batch_size=args.eval_batch_size, shuffle=True, collate_fn=eval_collator, num_workers=args.num_workers, pin_memory=pin_memory)
 
     return data_loader
 
@@ -88,16 +89,46 @@ def add_entity_markers(sentence, head, tail):
     return marked_sentence
 
 class BaseDataset(Dataset):
-    def __init__(self, args, data):
+    def __init__(self, args, data, tokenizer=None):
         super().__init__()
         self.args = args
         self.data = data
+        self.encoded_sents = None
+        if tokenizer is not None:
+            hs_id = tokenizer.convert_tokens_to_ids('[HEAD]')
+            he_id = tokenizer.convert_tokens_to_ids('[/HEAD]')
+            ts_id = tokenizer.convert_tokens_to_ids('[TAIL]')
+            te_id = tokenizer.convert_tokens_to_ids('[/TAIL]')
+            encoded = []
+            chunk_size = 4096
+            for start in range(0, len(data), chunk_size):
+                chunk = data[start:start + chunk_size]
+                texts = [
+                    ' '.join(add_entity_markers(d['sentence'], d['head'], d['tail']))
+                    for d in chunk
+                ]
+                batch_ids = tokenizer(texts, add_special_tokens=False)['input_ids']
+                for ids in batch_ids:
+                    encoded.append((
+                        ids,
+                        ids.index(hs_id),
+                        ids.index(he_id),
+                        ids.index(ts_id),
+                        ids.index(te_id),
+                    ))
+            self.encoded_sents = encoded
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, index):
         data_i = self.data[index]
+        if self.encoded_sents is not None:
+            return {
+                'encoded_sent': self.encoded_sents[index],
+                'relation': data_i['relation'],
+                'sample_idx': index,
+            }
         return {
             'sentence': add_entity_markers(data_i['sentence'], data_i['head'], data_i['tail']),
             'relation': data_i['relation'],
@@ -105,12 +136,12 @@ class BaseDataset(Dataset):
         }
 
 class WikiZSLDataset(BaseDataset):
-    def __init__(self, args, data):
-        super().__init__(args, data)
+    def __init__(self, args, data, tokenizer=None):
+        super().__init__(args, data, tokenizer)
 
 class FewRelDataset(BaseDataset):
-    def __init__(self, args, data):
-        super().__init__(args, data)
+    def __init__(self, args, data, tokenizer=None):
+        super().__init__(args, data, tokenizer)
 
 def strip_type_constraints(template):
     """Remove parenthesized entity type constraints from a relation schema template."""
@@ -125,17 +156,57 @@ class BaseCollator(ABC):
         ablation = getattr(args, 'ablation', 'none')
         self.use_duality = ablation not in ('wo_duality', 'wo_both')
         remove_types = ablation in ('wo_type_constraints', 'wo_both')
+        self.cls_id = tokenizer.cls_token_id
+        self.sep_id = tokenizer.sep_token_id
+        self.pad_id = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else 0
+        h_id = tokenizer.convert_tokens_to_ids('[H]')
+        t_id = tokenizer.convert_tokens_to_ids('[T]')
         self.descriptions = {}
+        self.pos_schemas = {}
+        self.neg_schemas = {}
         for r in descriptions:
             pos_tpl = r['positive_template']
             neg_tpl = r['negative_template']
             if remove_types:
                 pos_tpl = strip_type_constraints(pos_tpl)
                 neg_tpl = strip_type_constraints(neg_tpl)
-            self.descriptions[r['relation']] = (
-                pos_tpl.replace('[HEAD]', '[H]').replace('[TAIL]', '[T]'),
-                neg_tpl.replace('[HEAD]', '[H]').replace('[TAIL]', '[T]'),
-            )
+            pos_tpl = pos_tpl.replace('[HEAD]', '[H]').replace('[TAIL]', '[T]')
+            neg_tpl = neg_tpl.replace('[HEAD]', '[H]').replace('[TAIL]', '[T]')
+            self.descriptions[r['relation']] = (pos_tpl, neg_tpl)
+            pos_ids = tokenizer.encode(pos_tpl, add_special_tokens=False)
+            neg_ids = tokenizer.encode(neg_tpl, add_special_tokens=False)
+            self.pos_schemas[r['relation']] = (pos_ids, pos_ids.index(h_id), pos_ids.index(t_id))
+            self.neg_schemas[r['relation']] = (neg_ids, neg_ids.index(h_id), neg_ids.index(t_id))
+
+    def _build_pair(self, sch_entry, sent_entry):
+        sch_ids, h_pos, t_pos = sch_entry
+        sent_ids, hs, he, ts, te = sent_entry
+        off = len(sch_ids) + 2
+        seq = [self.cls_id] + sch_ids + [self.sep_id] + sent_ids + [self.sep_id]
+        if len(seq) > self.args.max_length:
+            seq = seq[:self.args.max_length - 1] + [self.sep_id]
+        max_idx = len(seq) - 1
+        bound = (
+            min(1 + h_pos, max_idx),
+            min(1 + t_pos, max_idx),
+            min(off + hs, max_idx),
+            min(off + he, max_idx),
+            min(off + ts, max_idx),
+            min(off + te, max_idx),
+        )
+        return seq, bound
+
+    def _pack_pairs(self, pos_seqs, pos_bounds, neg_seqs, neg_bounds):
+        seqs = pos_seqs + neg_seqs if self.use_duality else pos_seqs
+        bounds = pos_bounds + neg_bounds if self.use_duality else pos_bounds
+        max_len = max(len(s) for s in seqs)
+        pad_id = self.pad_id
+        padded = [s + [pad_id] * (max_len - len(s)) if len(s) < max_len else s for s in seqs]
+        input_ids = torch.tensor(padded, dtype=torch.long)
+        lens = torch.tensor([len(s) for s in seqs], dtype=torch.long)
+        attention_mask = (torch.arange(max_len, dtype=torch.long).unsqueeze(0) < lens.unsqueeze(1)).long()
+        boundaries = torch.tensor(bounds, dtype=torch.long)
+        return input_ids, attention_mask, boundaries
 
     @abstractmethod
     def __call__(self, batch):
@@ -145,52 +216,38 @@ class TrainCollator(BaseCollator):
     def __init__(self, args, tokenizer, descriptions):
         super().__init__(args, tokenizer, descriptions)
 
-    def get_negative(self, relations):
-        num_negs = min(len(relations), self.args.max_relations)
-        return random.sample(relations, num_negs - 1)
+    def get_negative(self, relations, gold_rel):
+        neg_pool = [r for r in relations if r != gold_rel]
+        k = min(len(neg_pool), self.args.max_relations - 1)
+        return random.sample(neg_pool, k)
 
     def __call__(self, batch):
         relations = list(set([b['relation'] for b in batch]))
 
-        pos_input_texts = []
-        neg_input_texts = []
+        pos_seqs, pos_bounds = [], []
+        neg_seqs, neg_bounds = [], []
         labels = []
 
         for b in batch:
-            all_relations = set(self.get_negative(relations) + [b['relation']])
-            all_relations = sorted(list(all_relations))
+            sent_entry = b['encoded_sent']
+            all_relations = self.get_negative(relations, b['relation']) + [b['relation']]
             random.shuffle(all_relations)
             for r in all_relations:
-                s = self.descriptions[r][0] + ' ' + self.tokenizer.sep_token + ' ' + ' '.join(b['sentence'])
-                pos_input_texts.append(s)
+                seq, bound = self._build_pair(self.pos_schemas[r], sent_entry)
+                pos_seqs.append(seq)
+                pos_bounds.append(bound)
                 if self.use_duality:
-                    s = self.descriptions[r][1] + ' ' + self.tokenizer.sep_token + ' ' + ' '.join(b['sentence'])
-                    neg_input_texts.append(s)
+                    n_seq, n_bound = self._build_pair(self.neg_schemas[r], sent_entry)
+                    neg_seqs.append(n_seq)
+                    neg_bounds.append(n_bound)
                 labels.append(1 if b['relation'] == r else 0)
 
-        input_texts = pos_input_texts + neg_input_texts if self.use_duality else pos_input_texts
-        tokenized_inputs = self.tokenizer(
-            input_texts,
-            padding='longest',
-            truncation=True,
-            max_length=self.args.max_length,
-            return_tensors='pt'
-        )
-
-        h_indices = (tokenized_inputs['input_ids'] == self.tokenizer.convert_tokens_to_ids('[H]')).nonzero(as_tuple=True)[1].view(-1, 1)
-        t_indices = (tokenized_inputs['input_ids'] == self.tokenizer.convert_tokens_to_ids('[T]')).nonzero(as_tuple=True)[1].view(-1, 1)
-        h_start_indices = (tokenized_inputs['input_ids'] == self.tokenizer.convert_tokens_to_ids('[HEAD]')).nonzero(as_tuple=True)[1].view(-1, 1)
-        h_end_indices = (tokenized_inputs['input_ids'] == self.tokenizer.convert_tokens_to_ids('[/HEAD]')).nonzero(as_tuple=True)[1].view(-1, 1)
-        t_start_indices = (tokenized_inputs['input_ids'] == self.tokenizer.convert_tokens_to_ids('[TAIL]')).nonzero(as_tuple=True)[1].view(-1, 1)
-        t_end_indices = (tokenized_inputs['input_ids'] == self.tokenizer.convert_tokens_to_ids('[/TAIL]')).nonzero(as_tuple=True)[1].view(-1, 1)
-
-        boundaries = torch.cat([h_indices, t_indices, h_start_indices, h_end_indices, t_start_indices, t_end_indices], dim=-1)
-
+        input_ids, attention_mask, boundaries = self._pack_pairs(pos_seqs, pos_bounds, neg_seqs, neg_bounds)
         labels = torch.tensor(labels, dtype=torch.long)
 
         return {
-            'input_ids': tokenized_inputs['input_ids'],
-            'attention_mask': tokenized_inputs['attention_mask'],
+            'input_ids': input_ids,
+            'attention_mask': attention_mask,
             'boundaries': boundaries,
             'labels': labels,
         }
@@ -201,40 +258,27 @@ class EvalCollator(BaseCollator):
         self.relations = relations
 
     def __call__(self, batch):
-        pos_input_texts = []
-        neg_input_texts = []
+        pos_seqs, pos_bounds = [], []
+        neg_seqs, neg_bounds = [], []
 
         golden_labels = [self.relations.index(b['relation']) for b in batch]
 
         for b in batch:
+            sent_entry = b['encoded_sent']
             for r in self.relations:
-                s = self.descriptions[r][0] + ' ' + self.tokenizer.sep_token + ' ' + ' '.join(b['sentence'])
-                pos_input_texts.append(s)
+                seq, bound = self._build_pair(self.pos_schemas[r], sent_entry)
+                pos_seqs.append(seq)
+                pos_bounds.append(bound)
                 if self.use_duality:
-                    s = self.descriptions[r][1] + ' ' + self.tokenizer.sep_token + ' ' + ' '.join(b['sentence'])
-                    neg_input_texts.append(s)
+                    n_seq, n_bound = self._build_pair(self.neg_schemas[r], sent_entry)
+                    neg_seqs.append(n_seq)
+                    neg_bounds.append(n_bound)
 
-        input_texts = pos_input_texts + neg_input_texts if self.use_duality else pos_input_texts
-        tokenized_inputs = self.tokenizer(
-            input_texts,
-            padding='longest',
-            truncation=True,
-            max_length=self.args.max_length,
-            return_tensors='pt'
-        )
-
-        h_indices = (tokenized_inputs['input_ids'] == self.tokenizer.convert_tokens_to_ids('[H]')).nonzero(as_tuple=True)[1].view(-1, 1)
-        t_indices = (tokenized_inputs['input_ids'] == self.tokenizer.convert_tokens_to_ids('[T]')).nonzero(as_tuple=True)[1].view(-1, 1)
-        h_start_indices = (tokenized_inputs['input_ids'] == self.tokenizer.convert_tokens_to_ids('[HEAD]')).nonzero(as_tuple=True)[1].view(-1, 1)
-        h_end_indices = (tokenized_inputs['input_ids'] == self.tokenizer.convert_tokens_to_ids('[/HEAD]')).nonzero(as_tuple=True)[1].view(-1, 1)
-        t_start_indices = (tokenized_inputs['input_ids'] == self.tokenizer.convert_tokens_to_ids('[TAIL]')).nonzero(as_tuple=True)[1].view(-1, 1)
-        t_end_indices = (tokenized_inputs['input_ids'] == self.tokenizer.convert_tokens_to_ids('[/TAIL]')).nonzero(as_tuple=True)[1].view(-1, 1)
-
-        boundaries = torch.cat([h_indices, t_indices, h_start_indices, h_end_indices, t_start_indices, t_end_indices], dim=-1)
+        input_ids, attention_mask, boundaries = self._pack_pairs(pos_seqs, pos_bounds, neg_seqs, neg_bounds)
 
         return {
-            'input_ids': tokenized_inputs['input_ids'],
-            'attention_mask': tokenized_inputs['attention_mask'],
+            'input_ids': input_ids,
+            'attention_mask': attention_mask,
             'boundaries': boundaries,
             'golden_labels': golden_labels,
             'sample_indices': [b['sample_idx'] for b in batch],

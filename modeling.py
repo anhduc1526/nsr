@@ -145,6 +145,15 @@ class RelationClassifier(nn.Module):
             nn.Sigmoid(),
         )
 
+        self.bridge_mlp = nn.Sequential(
+            nn.Linear(4 * args.hidden_size, args.hidden_size),
+            nn.GELU(),
+            nn.Dropout(args.dropout),
+            nn.Linear(args.hidden_size, 4 * args.hidden_size),
+        )
+        nn.init.zeros_(self.bridge_mlp[-1].weight)
+        nn.init.zeros_(self.bridge_mlp[-1].bias)
+
         self.classifier = nn.Linear(4 * args.hidden_size, 1)
 
     def _set_grad_checkpointing(self, enable):
@@ -197,6 +206,44 @@ class RelationClassifier(nn.Module):
         inv_perm[perm] = torch.arange(total_size, dtype=torch.long, device=device)
         return torch.cat(gathered, dim=0)[inv_perm]
 
+    def _reason_step(self, v, batch_size, total_size, use_duality, ablation, is_eval, speak_w=None):
+        """Run one contrapositive, graph-order-scaled neuro-symbolic reasoning step."""
+        z = torch.matmul(self.proj1(v), self.proj2(v).transpose(-2, -1))
+        if use_duality:
+            imply_logits = 0.5 * (z + z.transpose(-2, -1).roll(shifts=(batch_size, batch_size), dims=(0, 1)))
+        else:
+            imply_logits = z
+
+        if is_eval:
+            weights = imply_logits.clone().fill_diagonal_(torch.finfo(imply_logits.dtype).min).sigmoid_()
+        else:
+            weights = imply_logits.clone().fill_diagonal_(torch.finfo(imply_logits.dtype).min)
+            weights = torch.sigmoid(weights)
+
+        src = v if speak_w is None else (v * speak_w)
+        graph_scale = 255.0 / max(1, total_size - 1)
+        temp = torch.matmul(weights, src) * graph_scale
+        if ablation == 'wo_local':
+            out_v = temp
+        else:
+            ratio = self.gate(torch.cat([v, temp], dim=-1))
+            out_v = ratio * v + (1.0 - ratio) * temp
+        return out_v, imply_logits
+
+    def _compute_hop_loss(self, step_logits, step_imply_logits, labels, batch_size, use_duality, ablation, imply_labels):
+        """Compute prediction and implication loss for a single reasoning hop."""
+        if use_duality:
+            pos_loss = F.binary_cross_entropy_with_logits(step_logits[:batch_size], labels.float())
+            neg_loss = F.binary_cross_entropy_with_logits(step_logits[batch_size:], (1 - labels).float())
+            pred_loss = 0.5 * (pos_loss + neg_loss)
+        else:
+            pred_loss = F.binary_cross_entropy_with_logits(step_logits, labels.float())
+
+        if ablation in ('wo_reasoner', 'wo_implication_loss'):
+            return self.args.zeta_1 * pred_loss
+        imply_loss = F.binary_cross_entropy_with_logits(step_imply_logits, imply_labels.to(step_imply_logits.dtype))
+        return self.args.zeta_1 * pred_loss + self.args.zeta_2 * imply_loss
+
     def forward(self, input_ids, attention_mask, boundaries, labels=None, **kwargs):
         ablation = getattr(self.args, 'ablation', 'none')
         use_duality = ablation not in ('wo_duality', 'wo_both')
@@ -227,23 +274,31 @@ class RelationClassifier(nn.Module):
             pos_both = self.pos_signer(torch.cat([relation_embeds, entity_embeds], dim=0))
             triplet_embeds = torch.cat([pos_both[:batch_size], pos_both[batch_size:]], dim=-1)
 
-        imply_logits = None
         if ablation != 'wo_reasoner':
-            imply_logits = torch.matmul(self.proj1(triplet_embeds), self.proj2(triplet_embeds).transpose(-2, -1))
-            if labels is None:
-                weights = imply_logits.fill_diagonal_(torch.finfo(imply_logits.dtype).min).sigmoid_()
-            else:
-                weights = imply_logits.clone().fill_diagonal_(torch.finfo(imply_logits.dtype).min)
-                weights = F.sigmoid(weights)
+            v0 = triplet_embeds
+            is_eval = labels is None
 
-            temp = torch.matmul(weights, triplet_embeds)
-            if ablation == 'wo_local':
-                triplet_embeds = temp
-            else:
-                ratio = self.gate(torch.cat([triplet_embeds, temp], dim=-1))
-                triplet_embeds = ratio * triplet_embeds + (1.0 - ratio) * temp
+            # Hop 1: Initial contrapositive reasoning & certainty estimation
+            v1, imp1 = self._reason_step(v0, batch_size, total_size, use_duality, ablation, is_eval)
+            logits1 = self.classifier(v1).squeeze(-1)
 
-        logits = self.classifier(triplet_embeds).squeeze(-1)
+            # P2 (Hop1-Certainty-Gate): Pair-symmetric certainty weighting (preserves exact 1:1 True/False balance)
+            speak_w = None
+            if use_duality:
+                with torch.no_grad():
+                    p1 = torch.sigmoid(logits1.float())
+                    cert = 0.25 + 0.75 * (p1[:batch_size] - p1[batch_size:]).abs()
+                    cert = cert / cert.mean().clamp(min=1e-6)
+                    speak_w = torch.cat([cert, cert], dim=0).to(v0.dtype).unsqueeze(-1)
+
+            # P1 (ZI-2Hop): Normalized Zero-Init Bridge Residual into Hop 2
+            u1 = F.layer_norm(v1.float(), (v1.size(-1),)).to(v0.dtype)
+            v_bridge = v0 + self.bridge_mlp(u1)
+            v2, imp2 = self._reason_step(v_bridge, batch_size, total_size, use_duality, ablation, is_eval, speak_w=speak_w)
+            logits = self.classifier(v2).squeeze(-1)
+        else:
+            logits1, imp1, imp2 = None, None, None
+            logits = self.classifier(triplet_embeds).squeeze(-1)
 
         if use_duality:
             pos_logits = logits[:batch_size]
@@ -254,25 +309,17 @@ class RelationClassifier(nn.Module):
 
         loss = None
         if labels is not None:
-            if use_duality:
-                pos_labels = labels
-                pos_loss = F.binary_cross_entropy_with_logits(pos_logits, pos_labels.float())
+            imply_labels = None
+            if ablation not in ('wo_reasoner', 'wo_implication_loss'):
+                imply_labels_vec = torch.cat([labels, 1 - labels], dim=0) if use_duality else labels
+                imply_labels = (imply_labels_vec.unsqueeze(1) <= imply_labels_vec.unsqueeze(0))
 
-                neg_labels = 1 - labels
-                neg_loss = F.binary_cross_entropy_with_logits(neg_logits, neg_labels.float())
-
-                pred_loss = (pos_loss + neg_loss) / 2.0
-                imply_labels_vec = torch.cat([pos_labels, neg_labels], dim=0)
+            if ablation != 'wo_reasoner':
+                loss1 = self._compute_hop_loss(logits1, imp1, labels, batch_size, use_duality, ablation, imply_labels)
+                loss2 = self._compute_hop_loss(logits, imp2, labels, batch_size, use_duality, ablation, imply_labels)
+                loss = (1.0 / 3.0) * loss1 + (2.0 / 3.0) * loss2
             else:
-                pred_loss = F.binary_cross_entropy_with_logits(pos_logits, labels.float())
-                imply_labels_vec = labels
-
-            if ablation in ('wo_reasoner', 'wo_implication_loss'):
-                loss = self.args.zeta_1 * pred_loss
-            else:
-                imply_labels = (imply_labels_vec.unsqueeze(1) <= imply_labels_vec.unsqueeze(0)).to(imply_logits.dtype)
-                imply_loss = F.binary_cross_entropy_with_logits(imply_logits, imply_labels)
-                loss = self.args.zeta_1 * pred_loss + self.args.zeta_2 * imply_loss
+                loss = self._compute_hop_loss(logits, None, labels, batch_size, use_duality, ablation, None)
 
         logits = (pos_logits - neg_logits) if use_duality else pos_logits
 
